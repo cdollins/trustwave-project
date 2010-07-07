@@ -57,7 +57,7 @@ public class Transaction implements Runnable, AppConstants {
                 }
             }
             catch (final ZeroBalanceException e) {
-                final String zeroBalance = String.format("%s is giving up", name);
+                    final String zeroBalance = String.format("%s is giving up", name);
 
                 if (verbose) {
                     System.out.println(zeroBalance);
