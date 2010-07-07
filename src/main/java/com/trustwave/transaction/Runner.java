@@ -15,7 +15,11 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.cli.HelpFormatter;
 
+import java.util.List;
+import java.util.ArrayList;
+
 public class Runner {
+    private static final int DEFAULT_BALANCE = 2000;
 
     public static void main(final String... args) {
         final Logger logger = LoggerFactory.getLogger(Runner.class);
@@ -36,11 +40,30 @@ public class Runner {
             if (cmd.hasOption("V")) {
                 System.setProperty("verbose", "true");
             }
-            
+
+            final int accountCount = Integer.parseInt(cmd.getOptionValue("N"));
+            final int threadCount = Integer.parseInt(cmd.getOptionValue("T"));
+            final int transferAmount = Integer.parseInt(cmd.getOptionValue("X"));
+
+            final AccountManager accountMgr = new AccountManager(createAccounts(accountCount));
+
+            final TransactionManager transactionMgr =
+                    new TransactionManager(accountMgr);
+
+            transactionMgr.simulate(threadCount, transferAmount);
         }
         catch (ParseException e) {
             logger.error("Unable to parse the provided options.", e);
         }
+    }
+
+    private static List<Account> createAccounts(final int size) {
+        final List<Account> accounts = new ArrayList<Account>();
+        for (int x = 0; x < size; ++x) {
+            accounts.add(new Account(DEFAULT_BALANCE));
+        }
+
+        return accounts;
     }
 
     private static Options createOptions() {
@@ -55,7 +78,7 @@ public class Runner {
 
         options.addOption("X", "transfer", true, "Number of dollars for each transfer");
 
-        options.addOption("N", "accounts", true, "number of user accounts");
+        options.addOption("N", "accounts", true, "Number of user accounts");
 
         return options;
     }
