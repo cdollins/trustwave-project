@@ -21,6 +21,7 @@ public class TransactionManager {
 
         for (int x = 0; x < threadCount; ++x) {
             final Thread thread = new Thread(new Transaction(transferAmount, accountMgr));
+            thread.setName("t" + x);
             pool.add(thread);
             thread.start();
         }

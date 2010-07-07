@@ -18,8 +18,7 @@ import org.apache.commons.cli.HelpFormatter;
 import java.util.List;
 import java.util.ArrayList;
 
-public class Runner {
-    private static final int DEFAULT_BALANCE = 2000;
+public class Runner implements AppConstants {
 
     public static void main(final String... args) {
         final Logger logger = LoggerFactory.getLogger(Runner.class);
@@ -38,7 +37,7 @@ public class Runner {
             }
 
             if (cmd.hasOption("V")) {
-                System.setProperty("verbose", "true");
+                System.setProperty(VERBOSE, VERBOSE_ON);
             }
 
             final int accountCount = Integer.parseInt(cmd.getOptionValue("N"));
