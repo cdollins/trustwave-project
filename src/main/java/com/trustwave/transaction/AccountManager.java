@@ -21,7 +21,7 @@ public class AccountManager {
         final Account sourceAccount = accounts.get(sourceId);
         final Account destinationAccount = accounts.get(destinationId);
 
-        precondition(sourceAccount, destinationAccount);
+        hasZeroBalance(sourceAccount, destinationAccount);
 
         final boolean sourceAccountLockAquired = sourceAccount.getLock();
         final boolean destinationAccountLockAquired = destinationAccount.getLock();
@@ -49,13 +49,15 @@ public class AccountManager {
         final Account sourceAccount = accounts.get(sourceId);
         final Account destinationAccount = accounts.get(destinationId);
 
-        precondition(sourceAccount, destinationAccount);
+        hasZeroBalance(sourceAccount, destinationAccount);
 
         sourceAccount.withdrawl(transferAmount);
         destinationAccount.deposit(transferAmount);
+
+        hasZeroBalance(sourceAccount, destinationAccount);
     }
 
-    private void precondition(final Account sourceAccount, final Account destinationAccount) throws ZeroBalanceException {
+    private void hasZeroBalance(final Account sourceAccount, final Account destinationAccount) throws ZeroBalanceException {
         if (exitLock) {
            throw new ZeroBalanceException();
         }

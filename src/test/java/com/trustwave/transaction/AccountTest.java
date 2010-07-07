@@ -31,4 +31,9 @@ public class AccountTest {
 
         assertEquals(account.getBalance(), 1000);
     }
+
+    @Test
+    public void testLock() {
+        
+    }
 }

@@ -17,15 +17,13 @@ public class Transaction implements Runnable, AppConstants {
 
     private final int transferAmount;
     private final AccountManager accountMgr;
-    private final int id;
     private final String name;
     private boolean verbose = false;
 
     public Transaction(final int transferAmount, final AccountManager accountMgr, final int id) {
         this.transferAmount = transferAmount;
         this.accountMgr = accountMgr;
-        this.id = id;
-        this.name = "t" + id ;
+        this.name = "t" + id;
 
         final String verboseString = System.getProperty(VERBOSE);
         if (verboseString != null && verboseString.equals(VERBOSE_ON)) {
@@ -33,8 +31,9 @@ public class Transaction implements Runnable, AppConstants {
         }
     }
 
+    @Override
     public void run() {
-        while(true) {
+        while (true) {
             
             final int sourceId = getRandomAccountId();
             final int destinationId = getRandomAccountId();
@@ -44,8 +43,10 @@ public class Transaction implements Runnable, AppConstants {
             }
 
             // SpinLock
-            //But essentially we want a monitor make this an event based thingy
+            // But essentially we want a monitor make this an event based thingy
+            // So threads don't starve
             try {
+
                 while (!accountMgr.aquire(sourceId, destinationId)) {
                     final String waiting = String.format("%s is waiting (%d, %d)", name, destinationId, sourceId);
 
@@ -55,7 +56,7 @@ public class Transaction implements Runnable, AppConstants {
                     logger.debug(waiting);
                 }
             }
-            catch (ZeroBalanceException e) {
+            catch (final ZeroBalanceException e) {
                 final String zeroBalance = String.format("%s is giving up", name);
 
                 if (verbose) {
@@ -85,12 +86,17 @@ public class Transaction implements Runnable, AppConstants {
                 }
                 logger.debug(zeroBalance);
 
-                throw new ZeroBalanceThreadException(id);
+                return;
             }
             finally {
                 accountMgr.release(sourceId, destinationId);
             }
         }
+    }
+
+    @Override
+    public String toString() {
+        return "#<Transaction: "+ hashCode() + " " + "transferAmount: " + transferAmount +">";
     }
 
     private int getRandomAccountId() {

@@ -6,16 +6,15 @@
 
 package com.trustwave.transaction;
 
-import java.util.concurrent.Semaphore;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class Account {
     private int balance;
 
-    private Semaphore lock;
+    private final ReentrantLock lock = new ReentrantLock();
 
     public Account(final int balance) {
         this.balance = balance;
-        this.lock = new Semaphore(1);
     }
 
     public void withdrawl(final int amount) {
@@ -31,10 +30,10 @@ public class Account {
     }
 
     public boolean getLock() {
-        return lock.tryAcquire();
+        return lock.tryLock();
     }
 
     public void releaseLock() {
-        lock.release();
+        lock.unlock();
     }
 }
