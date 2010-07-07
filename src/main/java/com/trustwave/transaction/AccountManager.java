@@ -11,18 +11,57 @@ import java.util.List;
 public class AccountManager {
     private final List<Account> accounts;
 
+    private boolean exitLock = false; 
+
     public AccountManager(final List<Account> accounts) {
         this.accounts = accounts;
     }
 
-    public Account retrieve(final int accountId) {
-        final Account account =  accounts.get(accountId);
+    public boolean aquire(final int sourceId, final int destinationId) throws ZeroBalanceException {
+        final Account sourceAccount = accounts.get(sourceId);
+        final Account destinationAccount = accounts.get(destinationId);
 
-        if (account.getLock()) {
-            return account;
+        precondition(sourceAccount, destinationAccount);
+
+        final boolean sourceAccountLockAquired = sourceAccount.getLock();
+        final boolean destinationAccountLockAquired = destinationAccount.getLock();
+
+        if (sourceAccountLockAquired && destinationAccountLockAquired) {
+            return true;
         }
-        else {
-            return null;
+        else if (destinationAccountLockAquired) {
+            destinationAccount.releaseLock();
+        }
+        else if (sourceAccountLockAquired) {
+            sourceAccount.releaseLock();
+        }
+
+        return false;
+    }
+
+    public void release(final int sourceId, final int destinationId) {
+        accounts.get(destinationId).releaseLock();
+        accounts.get(sourceId).releaseLock();
+    }
+
+    public void transact(final int sourceId, final int destinationId, final int transferAmount)
+            throws ZeroBalanceException {
+        final Account sourceAccount = accounts.get(sourceId);
+        final Account destinationAccount = accounts.get(destinationId);
+
+        precondition(sourceAccount, destinationAccount);
+
+        sourceAccount.withdrawl(transferAmount);
+        destinationAccount.deposit(transferAmount);
+    }
+
+    private void precondition(final Account sourceAccount, final Account destinationAccount) throws ZeroBalanceException {
+        if (exitLock) {
+           throw new ZeroBalanceException();
+        }
+        if (sourceAccount.getBalance() == 0 || destinationAccount.getBalance() == 0) {
+            exitLock = true;
+            throw new ZeroBalanceException();
         }
     }
 

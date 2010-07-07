@@ -6,10 +6,16 @@
 
 package com.trustwave.transaction;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.List;
 import java.util.ArrayList;
+import java.util.concurrent.Semaphore;
 
 public class TransactionManager {
+    private static final Logger logger = LoggerFactory.getLogger(TransactionManager.class);
+    
     private final AccountManager accountMgr;
 
     public TransactionManager(final AccountManager accountMgr) {
@@ -18,23 +24,21 @@ public class TransactionManager {
 
     public void simulate(final int threadCount, final int transferAmount) {
         final List<Thread> pool = new ArrayList<Thread>();
-
-        for (int x = 0; x < threadCount; ++x) {
-            final Thread thread = new Thread(new Transaction(transferAmount, accountMgr));
-            thread.setName("t" + x);
-            pool.add(thread);
-            thread.start();
-        }
-
-        for (int x = 0; x < pool.size(); ++x) {
-            pool.get(x);
-        }
-
+        
         try {
-            pool.get(0).join();
+            for (int x = 0; x < threadCount; ++x) {
+                final Thread thread = new Thread(new Transaction(transferAmount, accountMgr, x));
+                pool.add(thread);
+                thread.start();
+            }
         }
-        catch (InterruptedException e) {
-            System.out.println("BOOM!");
+        catch(final ZeroBalanceThreadException e) {
+            try {
+                pool.get(e.getThreadId()).join();
+            }
+            catch (InterruptedException e1) {
+                logger.error("Boom!, {}", e1);
+            }
         }
 
         accountMgr.print();

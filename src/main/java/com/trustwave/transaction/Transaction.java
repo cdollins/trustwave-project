@@ -17,12 +17,16 @@ public class Transaction implements Runnable, AppConstants {
 
     private final int transferAmount;
     private final AccountManager accountMgr;
+    private final int id;
+    private final String name;
     private boolean verbose = false;
 
-    public Transaction(final int transferAmount, final AccountManager accountMgr) {
+    public Transaction(final int transferAmount, final AccountManager accountMgr, final int id) {
         this.transferAmount = transferAmount;
         this.accountMgr = accountMgr;
-        
+        this.id = id;
+        this.name = "t" + id ;
+
         final String verboseString = System.getProperty(VERBOSE);
         if (verboseString != null && verboseString.equals(VERBOSE_ON)) {
             verbose = true;
@@ -39,50 +43,52 @@ public class Transaction implements Runnable, AppConstants {
                 continue;
             }
 
-            final Account sourceAccount = accountMgr.retrieve(sourceId);
-            final Account destinationAccount = accountMgr.retrieve(destinationId);
+            // SpinLock
+            //But essentially we want a monitor make this an event based thingy
+            try {
+                while (!accountMgr.aquire(sourceId, destinationId)) {
+                    final String waiting = String.format("%s is waiting (%d, %d)", name, destinationId, sourceId);
 
-            if (sourceAccount == null || destinationAccount == null) {
-                final String waiting = String.format("waiting");
-
-                if (verbose) {
-                    System.out.println(waiting);
+                    if (verbose) {
+                        System.out.println(waiting);
+                    }
+                    logger.debug(waiting);
                 }
-                logger.debug(waiting);
-
-                if (sourceAccount != null) {
-                    sourceAccount.releaseLock();
-                }
-
-                if (destinationAccount != null) {
-                    destinationAccount.releaseLock();
-                }
-                
-                continue;
             }
-
-            final String transacting = String.format("transfering %d ----------> %d", sourceId, destinationId);
-
-            if (verbose) {
-                System.out.println(transacting);
-            }
-            logger.debug(transacting);
-
-            sourceAccount.withdrawl(transferAmount);
-            destinationAccount.deposit(transferAmount);
-
-
-            sourceAccount.releaseLock();
-            destinationAccount.releaseLock();
-
-            if (sourceAccount.getBalance() == 0) {
-                final String zeroBalance = String.format("zero account balance!");
+            catch (ZeroBalanceException e) {
+                final String zeroBalance = String.format("%s is giving up", name);
 
                 if (verbose) {
                     System.out.println(zeroBalance);
                 }
                 logger.debug(zeroBalance);
                 return;
+            }
+
+
+            final String transacting =
+                    String.format("%s is transfering %d ----------> %d", name, sourceId, destinationId);
+
+            if (verbose) {
+                System.out.println(transacting);
+            }
+            logger.debug(transacting);
+
+            try {
+                accountMgr.transact(sourceId, destinationId, transferAmount);
+            }
+            catch (final ZeroBalanceException e) {
+                final String zeroBalance = String.format("%s has found zero account balance!", name);
+
+                if (verbose) {
+                    System.out.println(zeroBalance);
+                }
+                logger.debug(zeroBalance);
+
+                throw new ZeroBalanceThreadException(id);
+            }
+            finally {
+                accountMgr.release(sourceId, destinationId);
             }
         }
     }
