@@ -37,7 +37,6 @@ public class Transaction implements Runnable, AppConstants {
         }
     }
 
-    @Override
     public void run() {
         while (true) {
             
@@ -48,8 +47,13 @@ public class Transaction implements Runnable, AppConstants {
                 continue;
             }
 
-            accountMgr.aquire(sourceId, destinationId, id);
-            
+            try {
+                accountMgr.aquire(sourceId, destinationId, id);
+            }
+            catch (InterruptedException e) {
+                return;
+            }
+
             try {
                 accountMgr.transact(sourceId, destinationId, transferAmount);
                 final String transacting =
@@ -62,6 +66,7 @@ public class Transaction implements Runnable, AppConstants {
                 logger.debug(transacting);
             }
             catch (ZeroBalanceException e) {
+                accountMgr.print();
                 return;
             }
             finally {

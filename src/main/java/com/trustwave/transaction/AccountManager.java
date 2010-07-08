@@ -21,6 +21,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class AccountManager implements AppConstants {
     private static final Logger logger = LoggerFactory.getLogger(AccountManager.class);
 
+    private enum State {
+        WAITING, TRANSACTING
+    }
+
     private boolean verbose = false;
 
     private final List<Account> accounts;
@@ -28,6 +32,7 @@ public class AccountManager implements AppConstants {
     private final ReentrantLock lock = new ReentrantLock();
 
     private final List<Condition> conditions = new ArrayList<Condition>();
+    private final List<State> states = new ArrayList<State>();
     
     private final Map<Account, AtomicBoolean> locks = new ConcurrentHashMap<Account, AtomicBoolean>();
 
@@ -44,6 +49,7 @@ public class AccountManager implements AppConstants {
 
         for (int x = 0; x < threadCount; ++x) {
             conditions.add(lock.newCondition());
+            states.add(State.WAITING);
         }
 
         final String verboseString = System.getProperty(VERBOSE);
@@ -52,7 +58,7 @@ public class AccountManager implements AppConstants {
         }
     }
 
-    public boolean test(final Account source, final Account destination, final int id) {
+    public void test(final Account source, final Account destination, final int id) {
 
         final boolean sourceAquire = locks.get(source).compareAndSet(false, true);
         final boolean destinationAquire = locks.get(destination).compareAndSet(false, true);
@@ -61,31 +67,32 @@ public class AccountManager implements AppConstants {
             if (lock.hasWaiters(conditions.get(id))) {
                 conditions.get(id).signal();
             }
-            return false;
+            states.set(id, State.TRANSACTING);
+            return;
         }
 
         final AccountLockRequest request = new AccountLockRequest(source, destination, id);
 
         if (sourceAquire) {
             locks.get(source).set(false);
-            requestMap.get(source).add(request);
+            requestMap.get(destination).add(request);
         }
 
         if (destinationAquire) {
             locks.get(destination).set(false);
-            requestMap.get(destination).add(request);
+            requestMap.get(source).add(request);
         }
-
-        return true;
     }
 
-    public void aquire(final int sourceId, final int destinationId, final int id) {
+    public void aquire(final int sourceId, final int destinationId, final int id) throws InterruptedException {
         lock.lock();
         try {
             final Account source = accounts.get(sourceId);
             final Account destination = accounts.get(destinationId);
 
-            if (test(source, destination, id)) {
+            test(source, destination, id);
+
+            if (!states.get(id).equals(State.TRANSACTING)) {
                 final String waiting = String.format("%s is waiting source: %d, dest: %d)", "t" + id, sourceId, destinationId);
 
                 if (verbose) {
@@ -98,6 +105,8 @@ public class AccountManager implements AppConstants {
                 }
                 catch (InterruptedException e) {
                     logger.debug("{} has been interrupted", id);
+                    if (!states.get(id).equals(State.TRANSACTING))
+                        throw e;
                 }
             }
         }
@@ -109,6 +118,8 @@ public class AccountManager implements AppConstants {
     public void release(final int sourceId, final int destinationId, final int id) {
         lock.lock();
         try {
+
+            states.set(id, State.WAITING);
 
             final Account source = accounts.get(sourceId);
             final Account destination = accounts.get(destinationId);
@@ -156,7 +167,7 @@ public class AccountManager implements AppConstants {
         hasZeroBalance(sourceId);
     }
 
-    private void hasZeroBalance(final int sourceId) throws ZeroBalanceException {
+    private void hasZeroBalance(final int sourceId) {
         if (accounts.get(sourceId).getBalance() == 0) {
             logger.debug("zomg zero balance found!");
             throw new ZeroBalanceException();
