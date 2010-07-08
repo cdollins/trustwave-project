@@ -50,18 +50,11 @@
             <scope>test</scope>
         </dependency>
 
-        <!-- Pooling -->
-
+        <!-- Google Code -->
         <dependency>
-            <groupId>commons-pool</groupId>
-            <artifactId>commons-pool</artifactId>
-            <version>1.3</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>commons-logging</groupId>
-                    <artifactId>commons-logging</artifactId>
-                </exclusion>
-            </exclusions>
+            <groupId>com.google.collections</groupId>
+            <artifactId>google-collections</artifactId>
+            <version>1.0</version>
         </dependency>
 
         <!-- Logging -->

@@ -13,7 +13,7 @@ public class AccountTest {
 
     @Test
     public void testWithdrwal() {
-        final Account account = new Account(1000);
+        final Account account = new Account(0, 1000);
         for (int x = 0; x < 10; ++x) {
             account.withdrawl(100);
         }
@@ -24,16 +24,11 @@ public class AccountTest {
     @Test
     public void testDeposit() {
 
-        final Account account = new Account(0);
+        final Account account = new Account(0, 0);
         for (int x = 0; x < 10; ++x) {
             account.deposit(100);
         }
 
         assertEquals(account.getBalance(), 1000);
-    }
-
-    @Test
-    public void testLock() {
-        
     }
 }

@@ -6,14 +6,12 @@
 
 package com.trustwave.transaction;
 
-import java.util.concurrent.locks.ReentrantLock;
-
 public class Account {
+    private final int id;
     private int balance;
 
-    private final ReentrantLock lock = new ReentrantLock();
-
-    public Account(final int balance) {
+    public Account(final int id, final int balance) {
+        this.id = id;
         this.balance = balance;
     }
 
@@ -29,11 +27,7 @@ public class Account {
         return balance;
     }
 
-    public boolean getLock() {
-        return lock.tryLock();
-    }
-
-    public void releaseLock() {
-        lock.unlock();
+    public int getId() {
+        return id;
     }
 }

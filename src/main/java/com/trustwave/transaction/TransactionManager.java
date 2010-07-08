@@ -23,17 +23,16 @@ public class TransactionManager {
     }
 
     public void simulate(final int threadCount, final int transferAmount) {
-
         final ExecutorService executor = Executors.newFixedThreadPool(threadCount);
 
         for (int x = 0; x < threadCount; ++x) {
             executor.execute(new Transaction(transferAmount, accountMgr, x));
         }
 
-        executor.shutdown();
+        //executor.shutdown();
 
-        while(!executor.isTerminated()) {}
+        //while(!executor.isTerminated()) { /* wait */ }
 
-        accountMgr.print();
+        //accountMgr.print();
     }
 }

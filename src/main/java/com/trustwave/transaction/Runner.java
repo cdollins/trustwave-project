@@ -44,22 +44,27 @@ public class Runner implements AppConstants {
             final int threadCount = Integer.parseInt(cmd.getOptionValue("T"));
             final int transferAmount = Integer.parseInt(cmd.getOptionValue("X"));
 
-            final AccountManager accountMgr = new AccountManager(createAccounts(accountCount));
+            if (accountCount < 2 && threadCount < 1) {
+                throw new Exception();
+            }
+
+            final AccountManager accountMgr = new AccountManager(createAccounts(accountCount), threadCount);
 
             final TransactionManager transactionMgr =
                     new TransactionManager(accountMgr);
 
             transactionMgr.simulate(threadCount, transferAmount);
         }
-        catch (ParseException e) {
-            logger.error("Unable to parse the provided options.", e);
+        catch (Exception e) {
+            final HelpFormatter formatter = new HelpFormatter();
+            formatter.printHelp("transaction", createOptions());
         }
     }
 
     private static List<Account> createAccounts(final int size) {
         final List<Account> accounts = new ArrayList<Account>();
         for (int x = 0; x < size; ++x) {
-            accounts.add(new Account(DEFAULT_BALANCE));
+            accounts.add(new Account(x, DEFAULT_BALANCE));
         }
 
         return accounts;
@@ -73,11 +78,11 @@ public class Runner implements AppConstants {
 
         options.addOption("V", "verbose", false, "Provides more indepth debug information");
 
-        options.addOption("T", "threads", true, "Number of simultaneous threads to start");
+        options.addOption("T", "threads", true, "Number of simultaneous threads to start e.g. t > 0");
 
         options.addOption("X", "transfer", true, "Number of dollars for each transfer");
 
-        options.addOption("N", "accounts", true, "Number of user accounts");
+        options.addOption("N", "accounts", true, "Number of user accounts e.g. x > 1");
 
         return options;
     }
