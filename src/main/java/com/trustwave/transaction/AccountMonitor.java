@@ -37,8 +37,6 @@ public class AccountManager implements AppConstants {
     private final List<Condition> conditions = new ArrayList<Condition>();
 
     private final List<State> states = new ArrayList<State>();
-    
-    private final Map<Account, AtomicBoolean> locks = new HashMap<Account, AtomicBoolean>();
 
     private final Map<Account, List<AccountLockRequest>> requestMap = new HashMap<Account, List<AccountLockRequest>>();
 
@@ -47,7 +45,6 @@ public class AccountManager implements AppConstants {
 
         for (final Account account : accounts) {
             requestMap.put(account, new ArrayList<AccountLockRequest>());
-            locks.put(account, new AtomicBoolean(false));
         }
 
         for (int x = 0; x < threadCount; ++x) {
@@ -63,8 +60,8 @@ public class AccountManager implements AppConstants {
 
     public void test(final Account source, final Account destination, final int id) {
 
-        final boolean sourceAquire = locks.get(source).compareAndSet(false, true);
-        final boolean destinationAquire = locks.get(destination).compareAndSet(false, true);
+        final boolean sourceAquire = source.aquireLock();
+        final boolean destinationAquire = destination.aquireLock();
 
         if (sourceAquire && destinationAquire) {
             states.set(id, State.TRANSACTING);
@@ -77,12 +74,12 @@ public class AccountManager implements AppConstants {
         final AccountLockRequest request = new AccountLockRequest(source, destination, id);
 
         if (!sourceAquire) {
-            locks.get(destination).set(false);
+            destination.releaseLock();
             requestMap.get(source).add(request);
         }
 
         if (!destinationAquire) {
-            locks.get(source).set(false);
+            source.releaseLock();
             requestMap.get(destination).add(request);
         }
 
@@ -126,8 +123,8 @@ public class AccountManager implements AppConstants {
             final Account source = accounts.get(sourceId);
             final Account destination = accounts.get(destinationId);
 
-            locks.get(source).set(false);
-            locks.get(destination).set(false);
+            source.releaseLock();
+            destination.releaseLock();
 
             honorRequested(source, destination);
 
