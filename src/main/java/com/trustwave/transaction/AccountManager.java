@@ -13,9 +13,10 @@ import java.util.List;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.HashMap;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.Condition;
-import java.util.concurrent.ConcurrentHashMap;
+
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class AccountManager implements AppConstants {
@@ -29,15 +30,17 @@ public class AccountManager implements AppConstants {
 
     private final List<Account> accounts;
 
+    private final AtomicBoolean exitSignal = new AtomicBoolean(false);
+
     private final ReentrantLock lock = new ReentrantLock();
 
     private final List<Condition> conditions = new ArrayList<Condition>();
+
     private final List<State> states = new ArrayList<State>();
     
-    private final Map<Account, AtomicBoolean> locks = new ConcurrentHashMap<Account, AtomicBoolean>();
+    private final Map<Account, AtomicBoolean> locks = new HashMap<Account, AtomicBoolean>();
 
-    private final Map<Account, List<AccountLockRequest>> requestMap =
-            new ConcurrentHashMap<Account, List<AccountLockRequest>>();
+    private final Map<Account, List<AccountLockRequest>> requestMap = new HashMap<Account, List<AccountLockRequest>>();
 
     public AccountManager(final List<Account> accounts, final int threadCount) {
         this.accounts = accounts;
@@ -64,27 +67,35 @@ public class AccountManager implements AppConstants {
         final boolean destinationAquire = locks.get(destination).compareAndSet(false, true);
 
         if (sourceAquire && destinationAquire) {
+            states.set(id, State.TRANSACTING);
             if (lock.hasWaiters(conditions.get(id))) {
                 conditions.get(id).signal();
             }
-            states.set(id, State.TRANSACTING);
             return;
         }
 
         final AccountLockRequest request = new AccountLockRequest(source, destination, id);
 
-        if (sourceAquire) {
+        if (!sourceAquire) {
+            locks.get(destination).set(false);
+            requestMap.get(source).add(request);
+        }
+
+        if (!destinationAquire) {
             locks.get(source).set(false);
             requestMap.get(destination).add(request);
         }
 
-        if (destinationAquire) {
-            locks.get(destination).set(false);
-            requestMap.get(source).add(request);
+        final String waiting =
+                String.format("%s is waiting source: %d, dest: %d", "t" + id, source.getId(), destination.getId());
+        if (verbose) {
+            System.out.println(waiting);
         }
+        logger.debug(waiting);
+
     }
 
-    public void aquire(final int sourceId, final int destinationId, final int id) throws InterruptedException {
+    public void aquire(final int sourceId, final int destinationId, final int id) {
         lock.lock();
         try {
             final Account source = accounts.get(sourceId);
@@ -93,20 +104,11 @@ public class AccountManager implements AppConstants {
             test(source, destination, id);
 
             if (!states.get(id).equals(State.TRANSACTING)) {
-                final String waiting = String.format("%s is waiting source: %d, dest: %d)", "t" + id, sourceId, destinationId);
-
-                if (verbose) {
-                    System.out.println(waiting);
-                }
-                logger.debug(waiting);
-
                 try {
                     conditions.get(id).await();
                 }
                 catch (InterruptedException e) {
                     logger.debug("{} has been interrupted", id);
-                    if (!states.get(id).equals(State.TRANSACTING))
-                        throw e;
                 }
             }
         }
@@ -135,31 +137,14 @@ public class AccountManager implements AppConstants {
         }
     }
 
-    private void honorRequested(final Account source, final Account destination) {
-        final HashSet<AccountLockRequest> reqs = new HashSet<AccountLockRequest>();
-
-            for (final AccountLockRequest req : requestMap.remove(source)) {
-                reqs.add(req);
-            }
-
-            for (final AccountLockRequest req : requestMap.remove(destination)) {
-                reqs.add(req);
-            }
-
-            requestMap.put(source, new ArrayList<AccountLockRequest>());
-            requestMap.put(destination, new ArrayList<AccountLockRequest>());
-
-            for (final AccountLockRequest req : reqs) {
-                logger.debug("during release of account: {} testing thread: {}, source: {}, dest: {}",
-                        new Object[]{source.getId(), "t" + req.getId(), req.getSource().getId(), req.getDestination().getId()});
-                test(req.getSource(), req.getDestination(), req.getId());
-            }
-    }
-
     public void transact(final int sourceId, final int destinationId, final int transferAmount)
             throws ZeroBalanceException {
         final Account sourceAccount = accounts.get(sourceId);
         final Account destinationAccount = accounts.get(destinationId);
+
+        if (exitSignal.get()) {
+            throw new ZeroBalanceException();
+        }
 
         sourceAccount.withdrawl(transferAmount);
         destinationAccount.deposit(transferAmount);
@@ -167,9 +152,45 @@ public class AccountManager implements AppConstants {
         hasZeroBalance(sourceId);
     }
 
-    private void hasZeroBalance(final int sourceId) {
-        if (accounts.get(sourceId).getBalance() == 0) {
-            logger.debug("zomg zero balance found!");
+    private void honorRequested(final Account source, final Account destination) {
+        final HashSet<AccountLockRequest> reqs = new HashSet<AccountLockRequest>();
+
+        for (final AccountLockRequest req : requestMap.remove(source)) {
+            reqs.add(req);
+
+            cleanupDoubleReference(req);
+        }
+
+        for (final AccountLockRequest req : requestMap.remove(destination)) {
+            reqs.add(req);
+
+            cleanupDoubleReference(req);
+        }
+
+        requestMap.put(source, new ArrayList<AccountLockRequest>());
+        requestMap.put(destination, new ArrayList<AccountLockRequest>());
+
+        for (final AccountLockRequest req : reqs) {
+            logger.debug("during release of accounts: {}, {}, testing thread: {}, source: {}, dest: {}",
+                    new Object[]{source.getId(), destination.getId(), "t" + req.getId(), req.getSource().getId(),
+                            req.getDestination().getId()});
+            test(req.getSource(), req.getDestination(), req.getId());
+        }
+    }
+
+    private void cleanupDoubleReference(final AccountLockRequest req) {
+        if (requestMap.get(req.getSource()) != null) {
+            requestMap.get(req.getSource()).remove(req);
+        }
+        if (requestMap.get(req.getDestination()) != null) {
+            requestMap.get(req.getDestination()).remove(req);
+        }
+    }
+
+    private void hasZeroBalance(final int account) throws ZeroBalanceException {
+        if (accounts.get(account).getBalance() == 0) {
+            exitSignal.set(true);
+            logger.debug("zomg account: {}  has zero balance!", account);
             throw new ZeroBalanceException();
         }
     }
