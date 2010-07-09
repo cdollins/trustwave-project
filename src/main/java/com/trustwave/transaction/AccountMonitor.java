@@ -19,8 +19,8 @@ import java.util.concurrent.locks.Condition;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public class AccountManager implements AppConstants {
-    private static final Logger logger = LoggerFactory.getLogger(AccountManager.class);
+public class AccountMonitor implements AppConstants {
+    private static final Logger logger = LoggerFactory.getLogger(AccountMonitor.class);
 
     private enum State {
         WAITING, TRANSACTING
@@ -40,7 +40,7 @@ public class AccountManager implements AppConstants {
 
     private final Map<Account, List<AccountLockRequest>> requestMap = new HashMap<Account, List<AccountLockRequest>>();
 
-    public AccountManager(final List<Account> accounts, final int threadCount) {
+    public AccountMonitor(final List<Account> accounts, final int threadCount) {
         this.accounts = accounts;
 
         for (final Account account : accounts) {

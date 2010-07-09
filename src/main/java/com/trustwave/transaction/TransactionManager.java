@@ -16,9 +16,9 @@ import java.util.concurrent.Executors;
 public class TransactionManager {
     private static final Logger logger = LoggerFactory.getLogger(TransactionManager.class);
     
-    private final AccountManager accountMgr;
+    private final AccountMonitor accountMgr;
 
-    public TransactionManager(final AccountManager accountMgr) {
+    public TransactionManager(final AccountMonitor accountMgr) {
         this.accountMgr = accountMgr;
     }
 

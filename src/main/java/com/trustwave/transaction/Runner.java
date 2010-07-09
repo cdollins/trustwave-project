@@ -12,7 +12,6 @@ import org.apache.commons.cli.PosixParser;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Options;
-import org.apache.commons.cli.ParseException;
 import org.apache.commons.cli.HelpFormatter;
 
 import java.util.List;
@@ -48,7 +47,7 @@ public class Runner implements AppConstants {
                 throw new Exception();
             }
 
-            final AccountManager accountMgr = new AccountManager(createAccounts(accountCount), threadCount);
+            final AccountMonitor accountMgr = new AccountMonitor(createAccounts(accountCount), threadCount);
 
             final TransactionManager transactionMgr =
                     new TransactionManager(accountMgr);

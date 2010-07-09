@@ -17,7 +17,7 @@ public class Transaction implements Runnable, AppConstants {
     private static final Random randomIdGenerator = new Random();
 
     private final int transferAmount;
-    private final AccountManager accountMgr;
+    private final AccountMonitor accountMgr;
     private final int id;
     private final String name;
     private boolean verbose = false;
@@ -25,7 +25,7 @@ public class Transaction implements Runnable, AppConstants {
     private int sourceId;
     private int destinationId;
 
-    public Transaction(final int transferAmount, final AccountManager accountMgr, final int id) {
+    public Transaction(final int transferAmount, final AccountMonitor accountMgr, final int id) {
         this.transferAmount = transferAmount;
         this.accountMgr = accountMgr;
         this.id = id;
