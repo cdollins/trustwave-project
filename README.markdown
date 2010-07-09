@@ -22,7 +22,7 @@ Output: The output will be the number of transactions it takes before the thread
 
 
 ## Build Instructions
-I used [Maven] mostly for dependency management & package automation.
+I used [Maven](http://maven.apache.org/) mostly for dependency management & package automation.
 
     $ mvn package appassembler:assemble
     $ sh target/appassembler/bin/transaction
