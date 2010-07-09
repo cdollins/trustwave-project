@@ -6,5 +6,5 @@
 
 package com.trustwave.transaction;
 
-public class ZeroBalanceException extends RuntimeException {
+public class ZeroBalanceException extends Exception {
 }

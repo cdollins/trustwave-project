@@ -25,13 +25,11 @@ public class TransactionManager {
     public void simulate(final int threadCount, final int transferAmount) {
         final ExecutorService executor = Executors.newFixedThreadPool(threadCount);
 
-        try {
-            for (int x = 0; x < threadCount; ++x) {
-                executor.execute(new Transaction(transferAmount, accountMgr, x));
-            }
-        } catch (ZeroBalanceException e) {
-            executor.shutdownNow();
+        for (int x = 0; x < threadCount; ++x) {
+            executor.execute(new Transaction(transferAmount, accountMgr, x));
         }
+
+        executor.shutdown();
 
         while(!executor.isTerminated()) { /* wait */ }
 

@@ -47,12 +47,7 @@ public class Transaction implements Runnable, AppConstants {
                 continue;
             }
 
-            try {
-                accountMgr.aquire(sourceId, destinationId, id);
-            }
-            catch (InterruptedException e) {
-                return;
-            }
+            accountMgr.aquire(sourceId, destinationId, id);
 
             try {
                 accountMgr.transact(sourceId, destinationId, transferAmount);
@@ -65,8 +60,8 @@ public class Transaction implements Runnable, AppConstants {
 
                 logger.debug(transacting);
             }
-            catch (ZeroBalanceException e) {
-                accountMgr.print();
+            catch (final ZeroBalanceException e) {
+                logger.debug("{} exiting stage left", "t" + id);
                 return;
             }
             finally {
