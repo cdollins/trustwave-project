@@ -83,20 +83,12 @@ public class AccountMonitor implements AppConstants {
             requestMap.get(destination).add(request);
         }
 
-        final String waiting =
-                String.format("%s is waiting source: %d, dest: %d", "t" + id, source.getId(), destination.getId());
-        if (verbose) {
-            System.out.println(waiting);
-        }
-        logger.debug(waiting);
-
+        logger.debug("%s is waiting source: %d, dest: %d", new Object[]{"t" + id, source.getId(), destination.getId()});
     }
 
-    public void aquire(final int sourceId, final int destinationId, final int id) {
+    public void aquire(final Account source, final Account destination, final int id) {
         lock.lock();
         try {
-            final Account source = accounts.get(sourceId);
-            final Account destination = accounts.get(destinationId);
 
             test(source, destination, id);
 
@@ -114,14 +106,11 @@ public class AccountMonitor implements AppConstants {
         }
     }
 
-    public void release(final int sourceId, final int destinationId, final int id) {
+    public void release(final Account source, final Account destination, final int id) {
         lock.lock();
         try {
 
             states.set(id, State.WAITING);
-
-            final Account source = accounts.get(sourceId);
-            final Account destination = accounts.get(destinationId);
 
             source.releaseLock();
             destination.releaseLock();
@@ -134,19 +123,21 @@ public class AccountMonitor implements AppConstants {
         }
     }
 
-    public void transact(final int sourceId, final int destinationId, final int transferAmount)
+    public void transact(final Account source, final Account destination, final int transferAmount)
             throws ZeroBalanceException {
-        final Account sourceAccount = accounts.get(sourceId);
-        final Account destinationAccount = accounts.get(destinationId);
 
         if (exitSignal.get()) {
             throw new ZeroBalanceException();
         }
 
-        sourceAccount.withdrawl(transferAmount);
-        destinationAccount.deposit(transferAmount);
+        source.withdrawl(transferAmount);
+        destination.deposit(transferAmount);
 
-        hasZeroBalance(sourceId);
+        hasZeroBalance(source);
+    }
+
+    public Account findById(final int accountId) {
+        return accounts.get(accountId);
     }
 
     private void honorRequested(final Account source, final Account destination) {
@@ -184,10 +175,14 @@ public class AccountMonitor implements AppConstants {
         }
     }
 
-    private void hasZeroBalance(final int account) throws ZeroBalanceException {
-        if (accounts.get(account).getBalance() == 0) {
+    private void hasZeroBalance(final Account account) throws ZeroBalanceException {
+        if (account.getBalance() == 0) {
             exitSignal.set(true);
-            logger.debug("zomg account: {}  has zero balance!", account);
+            final String zeroBalanceMessage = String.format("zomg account: %d  has zero balance!", account.getId());
+            if (verbose) {
+                System.out.println(zeroBalanceMessage);
+            }
+            logger.debug(zeroBalanceMessage);
             throw new ZeroBalanceException();
         }
     }

@@ -22,8 +22,8 @@ public class Transaction implements Runnable, AppConstants {
     private final String name;
     private boolean verbose = false;
 
-    private int sourceId;
-    private int destinationId;
+    private Account source;
+    private Account destination;
 
     public Transaction(final int transferAmount, final AccountMonitor accountMgr, final int id) {
         this.transferAmount = transferAmount;
@@ -40,42 +40,38 @@ public class Transaction implements Runnable, AppConstants {
     public void run() {
         while (true) {
             
-            sourceId = getRandomAccountId();
-            destinationId = getRandomAccountId();
+            source = accountMgr.findById(getRandomAccountId());
+            destination = accountMgr.findById(getRandomAccountId());
 
-            if (sourceId == destinationId) {
+            if (source == destination) {
                 continue;
             }
 
-            accountMgr.aquire(sourceId, destinationId, id);
+            accountMgr.aquire(source, destination, id);
 
             try {
-                accountMgr.transact(sourceId, destinationId, transferAmount);
-                final String transacting =
-                        String.format("%s is transfering %d ----------> %d", name, sourceId, destinationId);
+                final String before =
+                        String.format("%s is transfering %d to %d: (%d, %d) ----------> ", name, source.getId(),
+                                destination.getId(), source.getBalance(), destination.getBalance());
+
+                accountMgr.transact(source, destination, transferAmount);
+                final String after =
+                        String.format("%s(%d, %d)", before, source.getBalance(), destination.getBalance());
 
                 if (verbose) {
-                    System.out.println(transacting);
+                    System.out.println(after);
                 }
 
-                logger.debug(transacting);
+                logger.debug(after);
             }
             catch (final ZeroBalanceException e) {
                 logger.debug("{} exiting stage left", "t" + id);
                 return;
             }
             finally {
-                accountMgr.release(sourceId, destinationId, id);
+                accountMgr.release(source, destination, id);
             }
         }
-    }
-
-    public int getSourceId() {
-        return this.sourceId;
-    }
-
-    public int getDestinationId() {
-        return this.destinationId;
     }
 
     @Override
