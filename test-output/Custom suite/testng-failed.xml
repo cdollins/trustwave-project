@@ -1,0 +1,12 @@
+<!DOCTYPE suite SYSTEM "http://testng.org/testng-1.0.dtd">
+<suite thread-count="5" skipfailedinvocationCounts="false" verbose="1" name="Failed suite [Custom suite]" junit="false" parallel="none" annotations="JDK">
+  <test name="Trustwave(failed)" junit="false" parallel="none" annotations="JDK">
+    <classes>
+      <class name="com.trustwave.transaction.TransactionIT">
+        <methods>
+          <include name="continuesTesting"/>
+        </methods>
+      </class>
+    </classes>
+  </test>
+</suite>

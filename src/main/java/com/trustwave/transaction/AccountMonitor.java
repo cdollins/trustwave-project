@@ -28,7 +28,7 @@ public class AccountMonitor implements AppConstants {
 
     private boolean verbose = false;
 
-    private final List<Account> accounts;
+    protected final List<Account> accounts;
 
     private final AtomicBoolean exitSignal = new AtomicBoolean(false);
 
@@ -38,7 +38,7 @@ public class AccountMonitor implements AppConstants {
 
     private final List<State> states = new ArrayList<State>();
 
-    private final Map<Account, List<AccountLockRequest>> requestMap = new HashMap<Account, List<AccountLockRequest>>();
+    protected final Map<Account, List<AccountLockRequest>> requestMap = new HashMap<Account, List<AccountLockRequest>>();
 
     public AccountMonitor(final List<Account> accounts, final int threadCount) {
         this.accounts = accounts;
@@ -200,7 +200,7 @@ public class AccountMonitor implements AppConstants {
         return accounts.size();
     }
 
-    private static class AccountLockRequest {
+    protected static class AccountLockRequest {
         private final Account source;
         private final Account destination;
         private final int id;
