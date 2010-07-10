@@ -6,8 +6,6 @@
 
 package com.trustwave.transaction;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.apache.commons.cli.PosixParser;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.CommandLine;
@@ -20,7 +18,6 @@ import java.util.ArrayList;
 public class Runner implements AppConstants {
 
     public static void main(final String... args) {
-        final Logger logger = LoggerFactory.getLogger(Runner.class);
 
         final CommandLineParser parser = new PosixParser();
 
