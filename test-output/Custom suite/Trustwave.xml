@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="Trustwave" failures="0" tests="2" time="15.931" errors="0">
-  <properties/>
-  <testcase name="closedTransactionSystem" time="7.335" classname="com.trustwave.transaction.TransactionIT"/>
-  <testcase name="emptyRequstMap" time="8.582" classname="com.trustwave.transaction.TransactionIT"/>
-</testsuite>
