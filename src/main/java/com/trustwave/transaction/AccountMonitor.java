@@ -11,7 +11,6 @@ import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.concurrent.locks.ReentrantLock;
@@ -115,7 +114,7 @@ public class AccountMonitor implements AppConstants {
             source.releaseLock();
             destination.releaseLock();
 
-            honorRequested(source, destination);
+            notifyWaitingThreads(source, destination);
 
         }
         finally {
@@ -140,39 +139,33 @@ public class AccountMonitor implements AppConstants {
         return accounts.get(accountId);
     }
 
-    private void honorRequested(final Account source, final Account destination) {
-        final HashSet<AccountLockRequest> reqs = new HashSet<AccountLockRequest>();
+    private void notifyWaitingThreads(final Account source, final Account destination) {
 
-        for (final AccountLockRequest req : requestMap.remove(source)) {
-            reqs.add(req);
-
-            cleanupDoubleReference(req);
+        final List<AccountLockRequest> sourceQueue = requestMap.get(source);
+        if(!sourceQueue.isEmpty()) {
+            signalOthers(source, destination, sourceQueue.remove(0));
         }
 
-        for (final AccountLockRequest req : requestMap.remove(destination)) {
-            reqs.add(req);
-
-            cleanupDoubleReference(req);
-        }
-
-        requestMap.put(source, new ArrayList<AccountLockRequest>());
-        requestMap.put(destination, new ArrayList<AccountLockRequest>());
-
-        for (final AccountLockRequest req : reqs) {
-            logger.debug("during release of accounts: {}, {}, testing thread: {}, source: {}, dest: {}",
-                    new Object[]{source.getId(), destination.getId(), "t" + req.getId(), req.getSource().getId(),
-                            req.getDestination().getId()});
-            test(req.getSource(), req.getDestination(), req.getId());
+        final List<AccountLockRequest> destinationQueue = requestMap.get(destination);
+        if (!destinationQueue.isEmpty()) {
+            signalOthers(source, destination, destinationQueue.remove(0));
         }
     }
 
-    private void cleanupDoubleReference(final AccountLockRequest req) {
+    private void signalOthers(final Account source, final Account destination,
+            final AccountLockRequest req) {
+        logger.debug("during release of accounts: {}, {}, testing thread: {}, source: {}, dest: {}",
+                new Object[]{source.getId(), destination.getId(), "t" + req.getId(), req.getSource().getId(),
+                        req.getDestination().getId()});
+        
         if (requestMap.get(req.getSource()) != null) {
             requestMap.get(req.getSource()).remove(req);
         }
         if (requestMap.get(req.getDestination()) != null) {
             requestMap.get(req.getDestination()).remove(req);
         }
+
+        test(req.getSource(), req.getDestination(), req.getId());
     }
 
     private void hasZeroBalance(final Account account) throws ZeroBalanceException {
