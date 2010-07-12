@@ -83,7 +83,7 @@ public class AccountMonitor implements AppConstants {
             requestMap.get(destination).add(request);
         }
 
-        logger.debug("%s is waiting source: %d, dest: %d", new Object[]{"t" + id, source.getId(), destination.getId()});
+        logger.debug("{} is waiting source: {}, dest: {}", new Object[]{"t" + id, source.getId(), destination.getId()});
     }
 
     public void aquire(final Account source, final Account destination, final int id) {
