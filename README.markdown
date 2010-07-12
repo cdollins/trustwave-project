@@ -35,12 +35,9 @@ Issues can be submitted at: http://github.com/cdollins/trustwave-project/issues
 I'd really like to hear your feedback, and I'd love to receive your pull-requests!
 
 ## TODO
- 1. Clean Up Scheduling Strategy
-   * Priority Queue on AccountLockRequest
+ 1. Comment the Code
 
- 2. Comment the Code
-
- 3. Integration Test
+ 2. More Tests
 
 ## Copyright
 Copyright (c) 2010 Chad Dollins. See LICENSE for details.

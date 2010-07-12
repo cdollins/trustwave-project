@@ -11,6 +11,8 @@ import org.testng.annotations.Test;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Random;
+import java.util.Queue;
+
 import static org.testng.Assert.assertTrue;
 import static org.testng.Assert.assertEquals;
 
@@ -88,7 +90,7 @@ public class TransactionIT implements AppConstants {
         }
 
         public boolean isRequestMapEmpty() {
-            for (final List<AccountLockRequest> requests : requestMap.values()) {
+            for (final Queue<AccountLockRequest> requests : requestMap.values()) {
                 if (!requests.isEmpty()) {
                     return false;
                 }

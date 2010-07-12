@@ -13,6 +13,8 @@ import java.util.List;
 import java.util.ArrayList;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.PriorityQueue;
+import java.util.Queue;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.Condition;
 
@@ -37,13 +39,14 @@ public class AccountMonitor implements AppConstants {
 
     private final List<State> states = new ArrayList<State>();
 
-    protected final Map<Account, List<AccountLockRequest>> requestMap = new HashMap<Account, List<AccountLockRequest>>();
+    protected final Map<Account, Queue<AccountLockRequest>> requestMap =
+            new HashMap<Account, Queue<AccountLockRequest>>();
 
     public AccountMonitor(final List<Account> accounts, final int threadCount) {
         this.accounts = accounts;
 
         for (final Account account : accounts) {
-            requestMap.put(account, new ArrayList<AccountLockRequest>());
+            requestMap.put(account, new PriorityQueue<AccountLockRequest>());
         }
 
         for (int x = 0; x < threadCount; ++x) {
@@ -57,39 +60,40 @@ public class AccountMonitor implements AppConstants {
         }
     }
 
-    public void test(final Account source, final Account destination, final int id) {
+    public void test(final AccountLockRequest request) {
 
-        final boolean sourceAquire = source.aquireLock();
-        final boolean destinationAquire = destination.aquireLock();
+        final boolean sourceAquire = request.source.aquireLock();
+        final boolean destinationAquire = request.destination.aquireLock();
 
         if (sourceAquire && destinationAquire) {
-            states.set(id, State.TRANSACTING);
-            if (lock.hasWaiters(conditions.get(id))) {
-                conditions.get(id).signal();
+            states.set(request.id, State.TRANSACTING);
+            if (lock.hasWaiters(conditions.get(request.id))) {
+                conditions.get(request.id).signal();
             }
             return;
         }
 
-        final AccountLockRequest request = new AccountLockRequest(source, destination, id);
+        request.incrCount();
 
         if (!sourceAquire) {
-            destination.releaseLock();
-            requestMap.get(source).add(request);
+            request.destination.releaseLock();
+            requestMap.get(request.source).add(request);
         }
 
         if (!destinationAquire) {
-            source.releaseLock();
-            requestMap.get(destination).add(request);
+            request.source.releaseLock();
+            requestMap.get(request.destination).add(request);
         }
 
-        logger.debug("{} is waiting source: {}, dest: {}", new Object[]{"t" + id, source.getId(), destination.getId()});
+        logger.debug("{} is waiting source: {}, dest: {}",
+                new Object[]{"t" + request.id, request.source.getId(), request.destination.getId()});
     }
 
     public void aquire(final Account source, final Account destination, final int id) {
         lock.lock();
         try {
 
-            test(source, destination, id);
+            test(new AccountLockRequest(source, destination, id));
 
             if (!states.get(id).equals(State.TRANSACTING)) {
                 try {
@@ -141,14 +145,14 @@ public class AccountMonitor implements AppConstants {
 
     private void notifyWaitingThreads(final Account source, final Account destination) {
 
-        final List<AccountLockRequest> sourceQueue = requestMap.get(source);
+        final Queue<AccountLockRequest> sourceQueue = requestMap.get(source);
         if(!sourceQueue.isEmpty()) {
-            signalOthers(source, destination, sourceQueue.remove(0));
+            signalOthers(source, destination, sourceQueue.poll());
         }
 
-        final List<AccountLockRequest> destinationQueue = requestMap.get(destination);
+        final Queue<AccountLockRequest> destinationQueue = requestMap.get(destination);
         if (!destinationQueue.isEmpty()) {
-            signalOthers(source, destination, destinationQueue.remove(0));
+            signalOthers(source, destination, destinationQueue.poll());
         }
     }
 
@@ -165,7 +169,7 @@ public class AccountMonitor implements AppConstants {
             requestMap.get(req.getDestination()).remove(req);
         }
 
-        test(req.getSource(), req.getDestination(), req.getId());
+        test(req);
     }
 
     private void hasZeroBalance(final Account account) throws ZeroBalanceException {
@@ -193,10 +197,11 @@ public class AccountMonitor implements AppConstants {
         return accounts.size();
     }
 
-    protected static class AccountLockRequest {
+    protected static class AccountLockRequest implements Comparable<AccountLockRequest> {
         private final Account source;
         private final Account destination;
         private final int id;
+        private int count = 0;
 
         public AccountLockRequest(final Account source, final Account destination, final int id) {
             this.source = source;
@@ -214,6 +219,14 @@ public class AccountMonitor implements AppConstants {
 
         public Account getDestination() {
             return destination;
+        }
+
+        public void incrCount() {
+            ++count;
+        }
+
+        public int compareTo(final AccountLockRequest req) {
+            return req.count - this.count;
         }
     }
 }
